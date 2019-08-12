@@ -1,0 +1,6 @@
+git clone https://github.com/martinling/libserialport.git
+cd libserialport
+./autogen.sh
+./configure --target=x86_64-w64-mingw64
+make MXE_TARGETS=x86_64-w64-mingw32
+ls -al .libs/
