@@ -54,6 +54,20 @@ To output the Text HEX file with this command, use the shell function as follows
 ./toy_cdc_cmd -t "`cat panasonic_tv_power.txt`"
 ```
 
+### Linux permission setting
+
+Add a rule to udev In LINUX as follows:
+```
+# /etc/udev/rules.d/99-irusb.rules
+#	irdroid
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="fd08", ENV{ID_MM_DEVICE_IGNORE}="1", GROUP="users", MODE="0666"
+```
+
+Update is as follows:
+```
+sudo udevadm control --reload-rules
+```
+
 ## License
 
 This project is Free software.
