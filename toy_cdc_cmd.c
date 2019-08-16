@@ -25,7 +25,7 @@ int toy_open()
 	struct sp_port **ports;
 	struct sp_port *port0 = NULL;
 	enum sp_return ret;
-	int i,res;
+	int i;
 	int cnt = -1;
 
 	ret = sp_list_ports(&ports);
@@ -86,7 +86,7 @@ int toy_open()
 	sp_free_config(config);
 
 	port = port0;
-	
+
 	toy_flush();
 
 	return 0;
@@ -95,6 +95,8 @@ int toy_open()
 int toy_close()
 {
 	enum sp_return ret;
+
+	usleep(10 * 1000);		// 10mS Is this correct at this time?
 
 	for(int i = 0;i < 5;i++)
 	{
@@ -122,8 +124,8 @@ int toy_close()
 int toy_gets(char * data, int size)
 {
 	int mS = 200;
-	int res = -1;
-	int ret,count;
+	int res = 0;
+	int i,ret,count;
 	char * poi;
 	size_t remain;
 
@@ -132,32 +134,36 @@ int toy_gets(char * data, int size)
 	count = 0;
 	poi = data + count;
 	remain = size - count;
-	while(remain > 0)
+	for(i = 0;;i++)
 	{
-		if (mS != 0) 
+		if(remain <= 0)
 		{
-			ret = sp_blocking_read_next(port,poi, remain, mS);
+			break;
 		}
-		else
+		if(strstr((const char*)data,"\r\n") != NULL)
 		{
-			ret = sp_nonblocking_read(port,poi, remain);
+			break;
 		}
-		if(ret >= 0)
+		ret = sp_blocking_read_next(port,poi, remain, mS);
+		if(ret > 0)
 		{
 			count += ret;
 			poi = data + count;
 			remain = size - count;
 			res = count;
-			if(ret == 0)
+		}
+		else if(ret == 0)
+		{
+			if(i != 0)
 			{
 				break;
 			}
 		}
-		else
+		else //if(ret == 0)
 		{
+			res = ret;
 			break;
 		}
-		mS = 0;
 	}
 	if(res >= 0)
 	{
@@ -454,7 +460,7 @@ int toy_receive()
 	int res = -1;
 	int ret;
 	char rbuf[4092];
-	int off,lastoff,rsz,tmout;
+	int off,rsz,tmout;
 
 	ret = toy_open();
 	if(ret)
@@ -476,7 +482,6 @@ int toy_receive()
 
 	memset(rbuf,0,sizeof(rbuf));
 	off = 0;
-	lastoff = 0;
 	rsz = sizeof(rbuf);
 	tmout = 0;
 	while(1)
@@ -484,7 +489,6 @@ int toy_receive()
 		ret = toy_gets(&rbuf[off],rsz);
 		if(ret > 0)
 		{
-			lastoff = off;
 			off += ret;
 			rsz -= ret;
 
@@ -500,6 +504,7 @@ int toy_receive()
 				fprintf(stderr, "ERROR:receive buffer overrun. length=%d\n",off);
 				break;
 			}
+			usleep(10 * 1000);		// 10mS Is this correct at this time?
 		}
 		else if(ret == 0)
 		{
@@ -530,7 +535,7 @@ EXIT_PATH:
 
 int main(int argc,char* argv[])
 {
-	int ret = -1;
+	int ret;
 	char cmd = '\0';
 	char* hex = NULL;
 
@@ -568,7 +573,7 @@ int main(int argc,char* argv[])
 			break;
 	}
 
-	return 0;
+	return ret;
 }
 
 void usage()
@@ -583,7 +588,6 @@ void usage()
 
 void dump(char cType, const char* data,int size)
 {
-	char * poi;
 	char c;
 	int i,j;
 	for(i = 0;i < size;i+=16)
