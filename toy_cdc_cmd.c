@@ -123,7 +123,7 @@ int toy_close()
 
 int toy_gets(char * data, int size)
 {
-	int mS = 200;
+	int mS = 100;
 	int res = 0;
 	int i,ret,count;
 	char * poi;
@@ -377,7 +377,7 @@ int toy_transfer(const char* hex)
 {
 	int res = -1;
 	int ret;
-	int sz;
+	int ssz,rsz;
 	char rbuf[32];
 
 	ret = hex2ary(hex);
@@ -403,50 +403,37 @@ int toy_transfer(const char* hex)
 
 	fprintf(stderr, "Initialize complate.\n");
 
-	sz = sizeof(rbuf);
+	rsz = 1;
 	memset(rbuf,0,sizeof(rbuf));
 	ret = toy_bcmd_res("\x3", 1,
-		 rbuf,&sz);
-	if(ret || sz != 1 || rbuf[0] != 0x3E)
+		 rbuf,&rsz);
+	if(ret || rsz != 1 || rbuf[0] != 0x3E)
 	{
 		goto EXIT_PATH;
 	}
 
 	for(int i = 0;i < trans_count;i+=62)
 	{
-		if(trans_count <= (i + 62))
+		ssz = 62;
+		if(i + ssz > trans_count)
 		{
-			sz = sizeof(rbuf);
-			memset(rbuf,0,sizeof(rbuf));
-			ret = toy_bcmd_res((char *)&trans_data[i],
-				(trans_count % 62) ? (trans_count % 62) : 62,
-				rbuf,&sz);
-			if(!ret && sz == 4 && rbuf[0] == 0x3E && rbuf[1] == 't' && rbuf[3] == 'X')
-			{
-				break;
-			}
-			if(ret || sz != 1 || rbuf[0] != 0x3E)
-			{
-				goto EXIT_PATH;
-			}
-			memset(rbuf,0,sizeof(rbuf));
-			ret = toy_gets(rbuf,sizeof(res));
-			if(ret != 3 || rbuf[0] != 't' || rbuf[2] != 'X')
-			{
-				goto EXIT_PATH;
-			}
+			ssz = (trans_count % 62);
 		}
-		else
+		rsz = 1;
+		memset(rbuf,0,sizeof(rbuf));
+		ret = toy_bcmd_res((char *)&trans_data[i],
+			ssz,
+			rbuf,&rsz);
+		if(ret || rsz != 1 || rbuf[0] != 0x3E)
 		{
-			sz = sizeof(rbuf);
-			memset(rbuf,0,sizeof(rbuf));
-			ret = toy_bcmd_res((char *)&trans_data[i], 62,
-				 rbuf,&sz);
-			if(ret || sz != 1 || rbuf[0] != 0x3E)
-			{
-				goto EXIT_PATH;
-			}
+			goto EXIT_PATH;
 		}
+	}
+	memset(rbuf,0,sizeof(rbuf));
+	ret = toy_gets(rbuf,sizeof(res));
+	if(ret != 3 || rbuf[0] != 't' || rbuf[2] != 'X')
+	{
+		goto EXIT_PATH;
 	}
 	fprintf(stderr,"SUCCESS:Tansfer %d bytes\n",trans_count);
 	res = 0;
